@@ -1,4 +1,5 @@
-﻿@page "/"
+﻿
+@page "/files"
 @using Microsoft.AspNetCore.Components.Web
 @namespace RAG_Code_Base.Pages
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
@@ -8,19 +9,47 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RAG File Manager</title>
+    <title>RAG Assistant</title>
     <base href="~/" />
     <link href="css/app.css" rel="stylesheet" />
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        #blazor-error-ui {
+            background: lightyellow;
+            bottom: 0;
+            box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.2);
+            display: none;
+            left: 0;
+            padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            border-top: 2px solid red;
+        }
+
+        #blazor-error-ui .dismiss {
+            cursor: pointer;
+            position: absolute;
+            right: 0.75rem;
+            top: 0.5rem;
+        }
+    </style>
 </head>
 <body>
     <component type="typeof(App)" render-mode="ServerPrerendered" />
-
-    <div id="blazor-error-ui" style="display: none; background: lightyellow; padding: 20px; border: 2px solid red;">
-        <strong>Произошла ошибка!</strong> Смотрите консоль браузера.
+    
+    <div id="blazor-error-ui">
+        ⚠️ <strong>Произошла ошибка!</strong> Смотрите консоль браузера.
         <a href="" class="reload">Перезагрузить</a>
+        <a class="dismiss">🗙</a>
     </div>
-
+    
     <script src="_framework/blazor.server.js"></script>
 </body>
 </html>

@@ -4,9 +4,9 @@
     {
         public Guid Id { get; set; }
         public Guid FileItemId { get; set; }
-        public required FileItem FileItem { get; set; }
-        public required string Content { get; set; }
-        public required string BlockType { get; set; }
+        public FileItem FileItem { get; set; }
+        public string Content { get; set; }
+        public string BlockType { get; set; }
         public string? ClassName { get; set; }
         public string? MethodName { get; set; }
         public int StartLine { get; set; }

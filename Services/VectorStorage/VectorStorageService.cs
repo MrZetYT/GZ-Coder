@@ -258,11 +258,11 @@ namespace RAG_Code_Base.Services.VectorStorage
                     ids: new[] { new PointId { Uuid = blockId.ToString() } }
                 );
 
-                _logger.LogInformation("🗑️ Эмбеддинг для блока {BlockId} удалён из Qdrant", blockId);
+                _logger.LogInformation("Эмбеддинг для блока {BlockId} удалён из Qdrant", blockId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при удалении эмбеддинга для блока {BlockId}", blockId);
+                _logger.LogError(ex, "Ошибка при удалении эмбеддинга для блока {BlockId}", blockId);
                 throw;
             }
         }

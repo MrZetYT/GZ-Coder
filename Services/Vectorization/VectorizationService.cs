@@ -40,7 +40,7 @@ namespace RAG_Code_Base.Services.Vectorization
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Неизвестная ошибка при генерации эмбеддинга.");
+                _logger?.LogError(ex, "Неизвестная о    шибка при генерации эмбеддинга.");
                 return Array.Empty<float>();
             }
         }
