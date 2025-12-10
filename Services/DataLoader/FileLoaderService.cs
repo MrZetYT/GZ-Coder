@@ -30,27 +30,37 @@ namespace RAG_Code_Base.Services.DataLoader
             _logger = logger;
         }
 
-        public FileItem SaveFile(IFormFile file)
+        public List<FileItem> SaveFiles(IEnumerable<IFormFile> files)
         {
-            var filePath = Path.Combine(_storagePath, file.FileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            var savedFiles = new List<FileItem>();
+
+            foreach (var file in files)
             {
-                file.CopyTo(stream);
+                var filePath = Path.Combine(_storagePath, file.FileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    file.CopyTo(stream);
+                }
+
+                var fileItem = new FileItem
+                {
+                    FileName = file.FileName,
+                    FilePath = filePath,
+                    FileType = _typeResolver.GetFileType(file.FileName),
+                };
+
+                _applicationDbContext.FileItems.Add(fileItem);
+                savedFiles.Add(fileItem);
             }
 
-            var fileItem = new FileItem
-            {
-                FileName = file.FileName,
-                FilePath = filePath,
-                FileType = _typeResolver.GetFileType(file.FileName),
-            };
-
-            _applicationDbContext.FileItems.Add(fileItem);
             _applicationDbContext.SaveChanges();
 
-            BackgroundJob.Enqueue(() => ProcessFileInBackground(fileItem.Id));
+            foreach (var fileItem in savedFiles)
+            {
+                BackgroundJob.Enqueue(() => ProcessFileInBackground(fileItem.Id));
+            }
 
-            return fileItem;
+            return savedFiles;
         }
 
         public void ProcessFileInBackground(Guid fileId)
@@ -128,7 +138,7 @@ namespace RAG_Code_Base.Services.DataLoader
             return _applicationDbContext.FileItems.AsNoTracking().ToList();
         }
 
-        public bool DeleteFile(Guid id)
+        public async Task<bool> DeleteFileAsync(Guid id)
         {
             var fileItem = _applicationDbContext.FileItems
                 .Include(f => f.InfoBlocks)
@@ -144,7 +154,7 @@ namespace RAG_Code_Base.Services.DataLoader
                 File.Delete(fileItem.FilePath);
             }
 
-            _vectorStorageService.DeleteFileEmbeddingsAsync(id);
+            await _vectorStorageService.DeleteFileEmbeddingsAsync(id);
 
             _applicationDbContext.FileItems.Remove(fileItem);
             _applicationDbContext.SaveChanges();
@@ -152,7 +162,7 @@ namespace RAG_Code_Base.Services.DataLoader
             return true;
         }
 
-        public bool DeleteAllFiles()
+        public async Task<bool> DeleteAllFilesAsync()
         {
             var files = _applicationDbContext.FileItems
                 .Include(n => n.InfoBlocks)
@@ -162,7 +172,7 @@ namespace RAG_Code_Base.Services.DataLoader
             {
                 if (File.Exists(file.FilePath))
                     File.Delete(file.FilePath);
-                _vectorStorageService.DeleteFileEmbeddingsAsync(file.Id);
+                await _vectorStorageService.DeleteFileEmbeddingsAsync(file.Id);
             }
             
 
