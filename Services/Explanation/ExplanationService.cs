@@ -69,21 +69,10 @@ namespace RAG_Code_Base.Services.Explanation
 
                 _logger?.LogInformation("Поиск релевантных блоков в векторной базе...");
                 var similarBlocks = await _vectorStorageService.SearchSimilarBlocksAsync(
-                    questionEmbedding,
-                    topK,
-                    minSimilarity
+                    questionEmbedding
                 );
 
-                if (similarBlocks.Count == 0)
-                {
-                    _logger?.LogWarning("Релевантные блоки не найдены");
-                    return new ExplanationResponse
-                    {
-                        Question = question,
-                        Answer = "К сожалению, не удалось найти релевантную информацию в базе знаний. Попробуйте задать вопрос по-другому или загрузите больше файлов.",
-                        FoundBlocks = new List<SimilarBlock>()
-                    };
-                }
+                
 
                 _logger?.LogInformation("Найдено {Count} релевантных блоков", similarBlocks.Count);
 

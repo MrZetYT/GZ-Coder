@@ -49,9 +49,7 @@ namespace RAG_Code_Base.Controllers
 
                 // 2. Ищем похожие блоки в Qdrant
                 var similarBlocks = await _vectorStorageService.SearchSimilarBlocksAsync(
-                    queryEmbedding,
-                    request.TopK ?? 5,
-                    request.MinSimilarity ?? 0.3
+                    queryEmbedding
                 );
 
                 return Ok(new SearchResponse

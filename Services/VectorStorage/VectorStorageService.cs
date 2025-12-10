@@ -155,14 +155,10 @@ namespace RAG_Code_Base.Services.VectorStorage
         /// Ищет наиболее похожие блоки по векторному представлению запроса
         /// </summary>
         public async Task<List<SimilarBlock>> SearchSimilarBlocksAsync(
-            float[] queryEmbedding,
-            int topK = 5,
-            double minSimilarity = 0.5)
+            float[] queryEmbedding)
         {
             try
             {
-                _logger.LogInformation("🔍 Поиск похожих блоков: topK={TopK}, minSimilarity={MinSim}",
-                    topK, minSimilarity);
 
                 if (queryEmbedding == null || queryEmbedding.Length == 0)
                 {
@@ -173,9 +169,7 @@ namespace RAG_Code_Base.Services.VectorStorage
                 // Выполняем поиск в Qdrant
                 var searchResults = await _qdrantClient.SearchAsync(
                     collectionName: CollectionName,
-                    vector: queryEmbedding,
-                    limit: (ulong)topK,
-                    scoreThreshold: (float)minSimilarity
+                    vector: queryEmbedding
                 );
 
                 var similarBlocks = new List<SimilarBlock>();
