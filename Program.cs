@@ -6,6 +6,8 @@ using RAG_Code_Base.Services.Vectorization;
 using RAG_Code_Base.Services.VectorStorage;
 using Hangfire;
 using Hangfire.PostgreSql;
+using RAG_Code_Base.Services.Parsers.TreeSitterParsers;
+using RAG_Code_Base.Services.Explanation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,14 +25,65 @@ builder.Services.AddHangfire(configuration => configuration
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<FileLoaderService>();
+builder.Services.AddSingleton(sp =>
+{
+    var vectorizationService = sp.GetRequiredService<VectorizationService>();
+    var vectorStorageService = sp.GetRequiredService<VectorStorageService>();
+    var logger = sp.GetRequiredService<ILogger<ExplanationService>>();
+    return new ExplanationService(vectorizationService, vectorStorageService, logger);
+});
+
+// Add parsers
 builder.Services.AddScoped<TextFileParser>();
 builder.Services.AddScoped<MarkdownParser>();
+builder.Services.AddScoped<CSharpParser>();
+builder.Services.AddScoped<PythonTreeSitterParser>();
+builder.Services.AddScoped<JavaScriptTreeSitterParser>();
+builder.Services.AddScoped<TypeScriptTreeSitterParser>();
+builder.Services.AddScoped<JavaTreeSitterParser>();
+builder.Services.AddScoped<CppTreeSitterParser>();
+builder.Services.AddScoped<CTreeSitterParser>();
+builder.Services.AddScoped<RustTreeSitterParser>();
+builder.Services.AddScoped<PHPTreeSitterParser>();
+builder.Services.AddScoped<HTMLTreeSitterParser>();
+builder.Services.AddScoped<CSSTreeSitterParser>();
+builder.Services.AddScoped<PdfParser>();
+builder.Services.AddScoped<DocxParser>();
+
+
 
 // Add services to the container.
 builder.Services.AddScoped<ParserFactory>();
-builder.Services.AddScoped<VectorStorageService>();
-builder.Services.AddSingleton<FileValidator>();
+
+//именно так и никак иначе
+builder.Services.AddSingleton<VectorStorageService>();
+
+
+builder.Services.AddScoped<FileValidator>();
+
+
 builder.Services.AddSingleton<VectorizationService>();
+
+builder.Services.AddRazorPages();
+
+
+builder.Services.AddServerSideBlazor(options =>
+{
+    options.DetailedErrors = true;
+});
+
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped(sp =>
+{
+    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    client.BaseAddress = new Uri("http://localhost:5275");
+    return client;
+});
+
+
+
+
 
 builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
@@ -54,6 +107,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var vectorStorage = scope.ServiceProvider.GetRequiredService<VectorStorageService>();
+    // Сервис инициализируется здесь
+}
+
+
 app.UseHangfireDashboard("/hangfire");
 
 // Configure the HTTP request pipeline.
@@ -67,10 +127,13 @@ app.UseHttpsRedirection();
 
 // Используем статические файлы (для Blazor)
 app.UseStaticFiles();
+app.UseRouting();
 app.UseCors("AllowBlazor");
 
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapFallbackToFile("index.html");
+
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
 app.Run();

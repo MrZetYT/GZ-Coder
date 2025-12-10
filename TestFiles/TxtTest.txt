@@ -1,0 +1,18 @@
+Project Plan - November 2025
+
+1. Objectives:
+   - Integrate TreeSitter parsers for supported languages.
+   - Improve InfoBlock extraction accuracy.
+   - Add support for HTML, CSS, and Markdown parsing.
+
+2. Tasks:
+   - Implement parsers for missing languages (Rust, PHP, Swift).
+   - Write automated tests for parsing consistency.
+   - Benchmark performance on large datasets.
+
+3. Notes:
+   - Ensure all parsers handle Unicode properly.
+   - Verify compatibility with TreeSitter.DotNet.
+   - Document the parsing logic for maintainers.
+
+Author: Dev Team

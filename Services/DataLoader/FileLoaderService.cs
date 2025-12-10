@@ -17,6 +17,7 @@ namespace RAG_Code_Base.Services.DataLoader
         private readonly ParserFactory _parserFactory;
         private readonly VectorizationService _vectorizationService;
         private readonly VectorStorageService _vectorStorageService;
+
         public FileLoaderService(ApplicationDbContext applicationDbContext, ParserFactory parserFactory,
             VectorizationService vectorizationService, VectorStorageService vectorStorageService, ILogger<FileLoaderService> logger)
         {
@@ -29,29 +30,38 @@ namespace RAG_Code_Base.Services.DataLoader
             _logger = logger;
         }
 
-        public FileItem SaveFile(IFormFile file)
+        public List<FileItem> SaveFiles(IEnumerable<IFormFile> files)
         {
-            var filePath = Path.Combine(_storagePath, file.FileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            var savedFiles = new List<FileItem>();
+
+            foreach (var file in files)
             {
-                file.CopyTo(stream);
+                var filePath = Path.Combine(_storagePath, file.FileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    file.CopyTo(stream);
+                }
+
+                var fileItem = new FileItem
+                {
+                    FileName = file.FileName,
+                    FilePath = filePath,
+                    FileType = _typeResolver.GetFileType(file.FileName),
+                };
+
+                _applicationDbContext.FileItems.Add(fileItem);
+                savedFiles.Add(fileItem);
             }
 
-            var fileItem = new FileItem
-            {
-                FileName = file.FileName,
-                FilePath = filePath,
-                FileType = _typeResolver.GetFileType(file.FileName),
-            };
-
-            _applicationDbContext.FileItems.Add(fileItem);
             _applicationDbContext.SaveChanges();
 
-            BackgroundJob.Enqueue(() => ProcessFileInBackground(fileItem.Id));
+            foreach (var fileItem in savedFiles)
+            {
+                BackgroundJob.Enqueue(() => ProcessFileInBackground(fileItem.Id));
+            }
 
-            return fileItem;
+            return savedFiles;
         }
-        // TODO (07.11 - агент-векторизатор): добавить векторизацию здесь
 
         public void ProcessFileInBackground(Guid fileId)
         {
@@ -70,8 +80,9 @@ namespace RAG_Code_Base.Services.DataLoader
                     var blocks = parser.Parse(fileItem);
                     _applicationDbContext.InfoBlocks.AddRange(blocks);
                     _applicationDbContext.SaveChanges();
+
                     fileItem.Status = FileProcessingStatus.Vectorizing;
-                    foreach( var block in blocks)
+                    foreach (var block in blocks)
                     {
                         BackgroundJob.Enqueue(() => VectorizeBlockInBackgroundAsync(block.Id));
                     }
@@ -84,7 +95,7 @@ namespace RAG_Code_Base.Services.DataLoader
                     return;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 fileItem.Status = FileProcessingStatus.Failed;
                 fileItem.ErrorMessage = ex.Message;
@@ -97,13 +108,13 @@ namespace RAG_Code_Base.Services.DataLoader
         public async Task VectorizeBlockInBackgroundAsync(Guid infoBlockId)
         {
             var infoBlock = _applicationDbContext.InfoBlocks
-                .Include(n=> n.FileItem).FirstOrDefault(id => id.Id == infoBlockId);
+                .Include(n => n.FileItem).FirstOrDefault(id => id.Id == infoBlockId);
 
             if (infoBlock == null) throw new InvalidDataException();
             try
             {
                 var vector = await _vectorizationService.GenerateEmbeddingAsync(infoBlock.Content);
-                await _vectorStorageService.SaveEmbeddingAsync(infoBlockId, vector);
+                await _vectorStorageService.SaveEmbeddingAsync(infoBlockId, vector, _applicationDbContext);
             }
             catch (Exception ex)
             {
@@ -113,9 +124,9 @@ namespace RAG_Code_Base.Services.DataLoader
 
             infoBlock.IsVectorized = true;
             _applicationDbContext.SaveChanges();
-            
+
             var unprocessedCount = _applicationDbContext.InfoBlocks.Count(b => b.FileItemId == infoBlock.FileItemId && !b.IsVectorized);
-            if(unprocessedCount == 0)
+            if (unprocessedCount == 0)
             {
                 infoBlock.FileItem.Status = FileProcessingStatus.Ready;
                 _applicationDbContext.SaveChanges();
@@ -124,12 +135,14 @@ namespace RAG_Code_Base.Services.DataLoader
 
         public List<FileItem> GetAllFiles()
         {
-            return _applicationDbContext.FileItems.ToList();
+            return _applicationDbContext.FileItems.AsNoTracking().ToList();
         }
 
-        public bool DeleteFile(Guid id)
+        public async Task<bool> DeleteFileAsync(Guid id)
         {
-            var fileItem = _applicationDbContext.FileItems.FirstOrDefault(f=>f.Id== id);
+            var fileItem = _applicationDbContext.FileItems
+                .Include(f => f.InfoBlocks)
+                .FirstOrDefault(f => f.Id == id);
 
             if (fileItem == null)
             {
@@ -141,9 +154,31 @@ namespace RAG_Code_Base.Services.DataLoader
                 File.Delete(fileItem.FilePath);
             }
 
+            await _vectorStorageService.DeleteFileEmbeddingsAsync(id);
+
             _applicationDbContext.FileItems.Remove(fileItem);
             _applicationDbContext.SaveChanges();
 
+            return true;
+        }
+
+        public async Task<bool> DeleteAllFilesAsync()
+        {
+            var files = _applicationDbContext.FileItems
+                .Include(n => n.InfoBlocks)
+                .ToList();
+
+            foreach (var file in files)
+            {
+                if (File.Exists(file.FilePath))
+                    File.Delete(file.FilePath);
+                await _vectorStorageService.DeleteFileEmbeddingsAsync(file.Id);
+            }
+            
+
+
+            _applicationDbContext.FileItems.RemoveRange(files);
+            _applicationDbContext.SaveChanges();
 
             return true;
         }

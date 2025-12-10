@@ -17,20 +17,22 @@ namespace RAG_Code_Base.Controllers
         }
 
         [HttpPost("upload")]
-        public IActionResult UploadFile(IFormFile file)
+        public IActionResult UploadFiles(List<IFormFile> files)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("Файл не выбран.");
+            if (files == null || files.Count == 0)
+                return BadRequest("Файлы не выбраны.");
 
-            var validationResult = _fileValidator.Validate(file);
-            if (!validationResult.IsValid)
+            foreach (var file in files)
             {
-                return BadRequest(validationResult.ErrorMessage);
+                var validationResult = _fileValidator.Validate(file);
+                if (!validationResult.IsValid)
+                    return BadRequest($"Файл {file.FileName} — ошибка: {validationResult.ErrorMessage}");
             }
 
-            var savedFile = _fileLoaderService.SaveFile(file);
-            return Ok(savedFile);
+            var savedFiles = _fileLoaderService.SaveFiles(files);
+            return Ok(savedFiles);
         }
+
 
         [HttpGet("")]
         public IActionResult GetFilesList()
@@ -40,10 +42,18 @@ namespace RAG_Code_Base.Controllers
         }
 
         [HttpDelete("{id}")]
-        public IActionResult DeleteFile(Guid id)
+        public async Task<IActionResult> DeleteFileAsync(Guid id)
         {
-            var deletedFile = _fileLoaderService.DeleteFile(id);
+            var deletedFile = await _fileLoaderService.DeleteFileAsync(id);
             if (!deletedFile) return NotFound("Файл не найден.");
+            return NoContent();
+        }
+
+        [HttpDelete("DeleteAll")]
+        public async Task<IActionResult> DeleteAllFilesAsync()
+        {
+            var isDeleted = await _fileLoaderService.DeleteAllFilesAsync();
+            if (!isDeleted) return NotFound("Файлов нет");
             return NoContent();
         }
     }
