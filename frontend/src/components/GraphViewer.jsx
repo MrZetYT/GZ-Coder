@@ -1,37 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import { graphApi } from '../api/graphApi';
 import './GraphViewer.css';
 
 const GraphViewer = () => {
-    const [elements, setElements] = useState([]);
+    const [originalNodes, setOriginalNodes] = useState([]);
+    const [originalEdges, setOriginalEdges] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('all');
 
     const loadGraph = async () => {
         setLoading(true);
         setError(null);
         try {
             const { nodes, edges } = await graphApi.getProjectGraph();
-
-            // Конвертируем в формат Cytoscape
-            const cyElements = [
-                ...nodes.map(node => ({
-                    data: {
-                        id: node.id,
-                        label: node.label || node.id,
-                        type: node.type,
-                    },
-                })),
-                ...edges.map(edge => ({
-                    data: {
-                        source: edge.source,
-                        target: edge.target,
-                    },
-                })),
-            ];
-
-            setElements(cyElements);
+            setOriginalNodes(nodes);
+            setOriginalEdges(edges);
         } catch (err) {
             console.error('Failed to load graph:', err);
             setError(err.message);
@@ -39,6 +25,53 @@ const GraphViewer = () => {
             setLoading(false);
         }
     };
+
+    // Фильтрация узлов и рёбер
+    const filteredElements = useMemo(() => {
+        let filteredNodes = [...originalNodes];
+
+        // Фильтр по типу
+        if (filterType !== 'all') {
+            filteredNodes = filteredNodes.filter(node => node.type === filterType);
+        }
+
+        // Фильтр по поиску
+        if (searchTerm.trim() !== '') {
+            const term = searchTerm.toLowerCase();
+            filteredNodes = filteredNodes.filter(node =>
+                node.label && node.label.toLowerCase().includes(term)
+            );
+        }
+
+        const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
+
+        const filteredEdges = originalEdges.filter(edge =>
+            filteredNodeIds.has(edge.source) && filteredNodeIds.has(edge.target)
+        );
+
+        const elements = [];
+
+        filteredNodes.forEach(node => {
+            elements.push({
+                data: {
+                    id: node.id,
+                    label: node.label,
+                    type: node.type,
+                },
+            });
+        });
+
+        filteredEdges.forEach(edge => {
+            elements.push({
+                data: {
+                    source: edge.source,
+                    target: edge.target,
+                },
+            });
+        });
+
+        return elements;
+    }, [originalNodes, originalEdges, filterType, searchTerm]);
 
     useEffect(() => {
         loadGraph();
@@ -49,7 +82,7 @@ const GraphViewer = () => {
         fit: true,
         padding: 30,
         circle: false,
-        spacingFactor: 1.2,
+        spacingFactor: 1.5,
         animate: true,
     };
 
@@ -67,7 +100,7 @@ const GraphViewer = () => {
                 'shape': 'roundrectangle',
                 'width': 'label',
                 'padding': '10px',
-                'border-width': '2px',
+                'border-width': '1px',
                 'border-color': '#ffffff',
             },
         },
@@ -84,7 +117,7 @@ const GraphViewer = () => {
                 'shape': 'roundrectangle',
                 'width': 'label',
                 'padding': '10px',
-                'border-width': '2px',
+                'border-width': '1px',
                 'border-color': '#ffffff',
             },
         },
@@ -100,7 +133,7 @@ const GraphViewer = () => {
                 'text-outline-width': '1px',
                 'shape': 'ellipse',
                 'padding': '8px',
-                'border-width': '2px',
+                'border-width': '1px',
                 'border-color': '#ffffff',
             },
         },
@@ -112,7 +145,7 @@ const GraphViewer = () => {
                 'target-arrow-color': '#888888',
                 'target-arrow-shape': 'triangle',
                 'curve-style': 'bezier',
-                'arrow-scale': 1.5,
+                'arrow-scale': 1.2,
             },
         },
         {
@@ -122,15 +155,6 @@ const GraphViewer = () => {
                 'border-color': '#ffffff',
                 'line-color': '#ffffff',
                 'target-arrow-color': '#ffffff',
-            },
-        },
-        {
-            selector: ':hover',
-            style: {
-                'line-color': '#ffffff',
-                'target-arrow-color': '#ffffff',
-                'transition-property': 'line-color, target-arrow-color',
-                'transition-duration': '0.2s',
             },
         },
     ];
@@ -157,24 +181,55 @@ const GraphViewer = () => {
         <div className="graph-viewer">
             <div className="graph-header">
                 <h3>📊 Граф структуры проекта</h3>
-                <button onClick={loadGraph} className="refresh-graph-btn">
-                    🔄 Обновить
-                </button>
-                <div className="graph-legend">
-                    <span className="legend-file">📄 Файл</span>
-                    <span className="legend-class">🏛️ Класс</span>
-                    <span className="legend-method">🔧 Метод</span>
+                <div className="graph-controls">
+                    <div className="search-box">
+                        <input
+                            type="text"
+                            placeholder="🔍 Поиск по названию..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="filter-buttons">
+                        <button
+                            className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
+                            onClick={() => setFilterType('all')}
+                        >
+                            Все
+                        </button>
+                        <button
+                            className={`filter-btn file ${filterType === 'file' ? 'active' : ''}`}
+                            onClick={() => setFilterType('file')}
+                        >
+                            📄 Файлы
+                        </button>
+                        <button
+                            className={`filter-btn class ${filterType === 'class' ? 'active' : ''}`}
+                            onClick={() => setFilterType('class')}
+                        >
+                            🏛️ Классы
+                        </button>
+                        <button
+                            className={`filter-btn method ${filterType === 'method' ? 'active' : ''}`}
+                            onClick={() => setFilterType('method')}
+                        >
+                            🔧 Методы
+                        </button>
+                    </div>
+                    <button onClick={loadGraph} className="refresh-graph-btn" title="Обновить">
+                        🔄
+                    </button>
                 </div>
             </div>
             <div className="graph-container">
-                {elements.length > 0 ? (
+                {filteredElements.length > 0 ? (
                     <CytoscapeComponent
-                        elements={elements}
+                        key={`${searchTerm}-${filterType}`}
+                        elements={filteredElements}
                         layout={layout}
                         stylesheet={stylesheet}
                         style={{ width: '100%', height: '100%', minHeight: '600px' }}
                         cy={(cy) => {
-                            // Дополнительная настройка после инициализации
                             cy.on('tap', 'node', (evt) => {
                                 const node = evt.target;
                                 console.log('Clicked node:', node.data());
@@ -184,7 +239,9 @@ const GraphViewer = () => {
                 ) : (
                     <div className="graph-empty">
                         <p>Нет данных для отображения графа</p>
-                        <p className="graph-hint">Загрузите файлы проекта через вкладку "Загрузка проекта"</p>
+                        <p className="graph-hint">
+                            {searchTerm ? 'Попробуйте другой поисковый запрос' : 'Загрузите файлы проекта через вкладку "Загрузка проекта"'}
+                        </p>
                     </div>
                 )}
             </div>

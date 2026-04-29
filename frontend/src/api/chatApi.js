@@ -1,4 +1,4 @@
-﻿import api from './client';
+import api from './client';
 
 export const chatApi = {
   askQuestion: async (question, topK = 5, minSimilarity = 0.5) => {

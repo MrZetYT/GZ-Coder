@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import FileUpload from './components/FileUpload';
 import Chat from './components/Chat';
 import GraphViewer from './components/GraphViewer';

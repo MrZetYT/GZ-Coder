@@ -23,7 +23,7 @@ export const useStreamingChat = () => {
         let blocksData = null;
 
         try {
-            const response = await fetch('/api/query/stream', {
+            const response = await fetch('http://localhost/api/query/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question, topK }),

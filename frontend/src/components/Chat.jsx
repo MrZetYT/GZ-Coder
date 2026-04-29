@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { chatApi } from '../api/chatApi';
 import { speechApi } from '../api/speechApi';
 import { useStreamingChat } from '../hooks/useStreamingChat';
@@ -10,9 +10,8 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [useStreaming, setUseStreaming] = useState(true);
-    const [voiceMode, setVoiceMode] = useState('backend');
-    const messagesEndRef = useRef(null);
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+    const messagesEndRef = useRef(null);
 
     const {
         loading: streamingLoading,
@@ -29,6 +28,34 @@ const Chat = () => {
         stopRecording,
         cancelRecording,
     } = useAudioRecorder();
+
+    // Загрузка сохранённых сообщений при старте
+    useEffect(() => {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setMessages(parsed);
+            } catch (e) {
+                console.error('Failed to load messages', e);
+            }
+        }
+    }, []);
+
+    // Автосохранение при каждом изменении messages
+    useEffect(() => {
+        if (messages.length > 0) {
+            localStorage.setItem('chatMessages', JSON.stringify(messages));
+        }
+    }, [messages]);
+
+    // Очистка истории
+    const clearHistory = () => {
+        if (window.confirm('Очистить всю историю чата?')) {
+            setMessages([]);
+            localStorage.removeItem('chatMessages');
+        }
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -170,6 +197,9 @@ const Chat = () => {
                         <input type="checkbox" checked={useStreaming} onChange={(e) => setUseStreaming(e.target.checked)} />
                         <span>🎬 Стриминг (SSE)</span>
                     </label>
+                    <button onClick={clearHistory} className="clear-history-btn" title="Очистить историю">
+                        🗑️ Очистить историю
+                    </button>
                 </div>
             </div>
 

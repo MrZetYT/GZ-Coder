@@ -349,3 +349,20 @@
     .messages-container::-webkit-scrollbar-thumb:hover {
         background: var(--secondary);
     }
+
+.clear-history-btn {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-left: 12px;
+    transition: all 0.2s;
+}
+
+    .clear-history-btn:hover {
+        background: var(--error);
+        color: white;
+    }
