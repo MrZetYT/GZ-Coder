@@ -26,7 +26,7 @@ function App() {
                         className={`nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
                         onClick={() => setActiveTab('chat')}
                     >
-                        🤖 AI Ассистент
+                        🤖 AI-ассистент
                     </button>
                     <button
                         className={`nav-btn ${activeTab === 'graph' ? 'active' : ''}`}

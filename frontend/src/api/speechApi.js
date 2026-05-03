@@ -5,7 +5,6 @@ export const speechApi = {
         const formData = new FormData();
         formData.append('audio', wavBlob, 'recording.wav');
 
-        // Прямой URL на бэкенд (порт 80, не 5275!)
         const apiUrl = 'http://localhost/api/speech/recognize';
         console.log(`Отправка запроса на: ${apiUrl}`);
 

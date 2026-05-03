@@ -59,7 +59,7 @@ const FileUpload = () => {
             <div className="upload-header">
                 <div className="upload-icon">🚀</div>
                 <h2>Загрузка проекта</h2>
-                <p>Загрузите файлы с кодом для анализа AI ассистентом</p>
+                <p>Загрузите файлы с кодом для анализа AI-ассистентом</p>
             </div>
 
             <div
@@ -143,7 +143,6 @@ const FileUpload = () => {
                 <p className="note">⚠️ Максимальный размер файла: 50 MB</p>
             </div>
 
-            {/* 👇 ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ */}
             <FileList />
         </div>
     );
