@@ -1,5 +1,3 @@
-import api from './client';
-
 export const speechApi = {
     recognizeSpeech: async (wavBlob) => {
         const formData = new FormData();

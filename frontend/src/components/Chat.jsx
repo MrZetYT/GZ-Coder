@@ -4,6 +4,8 @@ import { useStreamingChat } from '../hooks/useStreamingChat';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import SourcesBlock from './SourcesBlock';
 import './Chat.css';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const Chat = () => {
     const [messages, setMessages] = useState([]);
@@ -113,10 +115,10 @@ const Chat = () => {
 
     const formatTime = (date) => new Date(date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-    const formatMessage = (text) => {
-        if (!text) return { __html: '' };
-        return { __html: text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') };
-    };
+    //const formatMessage = (text) => {
+    //    if (!text) return { __html: '' };
+    //    return { __html: text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') };
+    //};
 
     return (
         <div className="chat-container">
@@ -140,24 +142,66 @@ const Chat = () => {
                 )}
 
                 {messages.map((msg) => (
-                    <div key={msg.id} className={`message ${msg.type}`}>
-                        <div className="message-header">
-                            <span>{msg.type === 'user' ? '👤 Вы' : '🤖 AI-ассистент'}</span>
-                            <span>{formatTime(msg.timestamp)}</span>
-                        </div>
-                        <div className={`message-content ${msg.isError ? 'error' : ''}`}>
-                            {msg.type === 'assistant' && !msg.isError ? (
-                                <>
-                                    <div dangerouslySetInnerHTML={formatMessage(msg.content)} />
-                                    {msg.streaming && <span className="streaming-cursor">▊</span>}
-                                    {msg.sources?.length > 0 && <SourcesBlock sources={msg.sources} />}
-                                </>
-                            ) : (
-                                msg.content
-                            )}
-                        </div>
-                    </div>
-                ))}
+    <div key={msg.id} className={`message ${msg.type}`}>
+        <div className="message-header">
+            <span>{msg.type === 'user' ? '👤 Вы' : '🤖 AI-ассистент'}</span>
+            <span>{formatTime(msg.timestamp)}</span>
+        </div>
+
+        {/* Четко разделяем рендер для пользователя и ассистента */}
+        {msg.type === 'user' ? (
+            <div className="message-content">
+                {msg.content}
+            </div>
+        ) : (
+            <div className={`message-content ${msg.isError ? 'error' : 'markdown-body'}`}>
+                {msg.isError ? (
+                    msg.content
+                ) : (
+                    <>
+                        {msg.streaming && <span className="cursor">▊</span>}
+                        {msg.content ? (
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+    code({ node, inline, className, children, ...props }) {
+        // Если это инлайн-код (например `переменная`)
+        if (inline) {
+            return (
+                <code className="inline-code" {...props}>
+                    {children}
+                </code>
+            );
+        }
+
+        // Если это блок кода.
+        // ВАЖНО: react-markdown сам обернет этот элемент во внешний <pre>.
+        // Нам НЕ НУЖНО возвращать <pre> здесь, иначе будет двойная рамка.
+        return (
+            <code className={className || 'language-text'} {...props}>
+                {children}
+            </code>
+        );
+    },
+    p({ children }) {
+        // Обязательно возвращаем whiteSpace: 'pre-wrap'!
+        // Иначе Markdown "схлопывает" переносы строк от AI в обычные пробелы.
+        return <p style={{ marginBottom: '0.75em', whiteSpace: 'pre-wrap' }}>{children}</p>;
+    }
+}}
+                            >
+                                {msg.content}
+                            </ReactMarkdown>
+                        ) : (
+                            <span className="text-gray-400">Генерация ответа...</span>
+                        )}
+                        {msg.sources?.length > 0 && <SourcesBlock sources={msg.sources} />}
+                    </>
+                )}
+            </div>
+        )}
+    </div>
+))}
 
                 {(streamingLoading && !messages.find(m => m.streaming)) && (
                     <div className="message assistant loading">

@@ -34,7 +34,7 @@ namespace RAG_Code_Base.Services.Explanation
 
             try
             {
-                var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "LM", "gemma-3-it-1B-Q4_K_M.gguf");
+                var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "LM", "Qwen2.5-Coder-3B-Instruct-Q4_K_M.gguf");
 
                 _modelParams = new ModelParams(modelPath)
                 {
@@ -173,15 +173,23 @@ namespace RAG_Code_Base.Services.Explanation
 
             string prompt = $"""
                              Ты — инженер-программист. Объясни код и технический текст простыми словами.
-                             Если данных недостаточно — честно скажи, что данных не хватает.
 
-                             Контекст из кодовой базы:
-                             {contextBlock}
+								ИНСТРУКЦИИ ПО ФОРМАТИРОВАНИЮ:
+								- Используй **markdown** для форматирования
+								- Код выделяй в блоки: ```csharp ... ```
+								- Важные термины выделяй **жирным**
+								- Списки оформляй через "- " или "1. "
+								- Разбивай ответ на абзацы для читаемости
 
-                             Вопрос пользователя:
-                             {question}
+							 Если данных недостаточно — честно скажи об этом.
 
-                             Ответ:
+							 Контекст из кодовой базы:
+							 {contextBlock}
+
+							 Вопрос пользователя:
+							 {question}
+
+							 Ответ:
                              """;
 
             var inferenceParams = new InferenceParams
