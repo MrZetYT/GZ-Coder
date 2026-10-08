@@ -174,7 +174,7 @@ namespace RAG_Code_Base.Services.Explanation
             string prompt = $"""
                              Ты — инженер-программист. Объясни код и технический текст простыми словами.
 
-								ИНСТРУКЦИИ ПО ФОРМАТИРОВАНИЮ:
+                                ИНСТРУКЦИИ ПО ФОРМАТИРОВАНИЮ:
 								- Используй **markdown** для форматирования
 								- Код выделяй в блоки: ```csharp ... ```
 								- Важные термины выделяй **жирным**
@@ -186,10 +186,10 @@ namespace RAG_Code_Base.Services.Explanation
 							 Контекст из кодовой базы:
 							 {contextBlock}
 
-							 Вопрос пользователя:
+                             Вопрос пользователя:
 							 {question}
-
-							 Ответ:
+                             
+                             Ответ:
                              """;
 
             var inferenceParams = new InferenceParams
