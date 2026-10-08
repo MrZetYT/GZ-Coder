@@ -17,11 +17,13 @@ namespace RAG_Code_Base.Services.DataLoader
         private readonly ParserFactory _parserFactory;
         private readonly VectorizationService _vectorizationService;
         private readonly VectorStorageService _vectorStorageService;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public FileLoaderService(ApplicationDbContext applicationDbContext, ParserFactory parserFactory,
+        public FileLoaderService(ApplicationDbContext applicationDbContext,IDbContextFactory<ApplicationDbContext> dbContextFactory, ParserFactory parserFactory,
             VectorizationService vectorizationService, VectorStorageService vectorStorageService, ILogger<FileLoaderService> logger)
         {
             _applicationDbContext = applicationDbContext;
+            _dbContextFactory = dbContextFactory;
             _parserFactory = parserFactory;
             _vectorizationService = vectorizationService;
             _vectorStorageService = vectorStorageService;
@@ -135,7 +137,8 @@ namespace RAG_Code_Base.Services.DataLoader
 
         public List<FileItem> GetAllFiles()
         {
-            return _applicationDbContext.FileItems.AsNoTracking().ToList();
+            using var db = _dbContextFactory.CreateDbContext();
+            return db.FileItems.AsNoTracking().ToList();
         }
 
         public async Task<bool> DeleteFileAsync(Guid id)

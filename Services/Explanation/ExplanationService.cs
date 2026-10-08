@@ -2,21 +2,23 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LMKit.Model;
-using LMKit.TextGeneration;
+using LLama;
+using LLama.Common;
 using Microsoft.Extensions.Logging;
 using RAG_Code_Base.Models;
 using RAG_Code_Base.Services.Vectorization;
 using RAG_Code_Base.Services.VectorStorage;
+using System.Runtime.CompilerServices;
 
 namespace RAG_Code_Base.Services.Explanation
 {
-    public class ExplanationService
+    public class ExplanationService : IDisposable
     {
-        private readonly LM _model;
-        private readonly MultiTurnConversation _conversation;
+        private readonly LLamaWeights _weights;
+        private readonly ModelParams _modelParams;
         private readonly ILogger<ExplanationService>? _logger;
         private readonly VectorizationService _vectorizationService;
         private readonly VectorStorageService _vectorStorageService;
@@ -32,9 +34,17 @@ namespace RAG_Code_Base.Services.Explanation
 
             try
             {
-                var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "LM", "gemma-3-it-1B-Q4_K_M.gguf");
-                _model = new LM(modelPath);
-                _conversation = new MultiTurnConversation(_model);
+                var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "LM", "Qwen2.5-Coder-3B-Instruct-Q4_K_M.gguf");
+
+                _modelParams = new ModelParams(modelPath)
+                {
+                    ContextSize = 4096,
+                    GpuLayerCount = 0
+                };
+
+                _weights = LLamaWeights.LoadFromFile(_modelParams);
+
+                _logger?.LogInformation("ExplanationService инициализирован (LLamaSharp)");
             }
             catch (Exception ex)
             {
@@ -54,7 +64,7 @@ namespace RAG_Code_Base.Services.Explanation
                 _logger?.LogInformation("Получен вопрос: '{Question}'", question);
 
                 _logger?.LogInformation("Генерация эмбеддинга для вопроса...");
-                var questionEmbedding = await _vectorizationService.GenerateEmbeddingAsync(question);
+                var questionEmbedding = await _vectorizationService.GenerateEmbeddingAsync(question, cancellationToken);
 
                 if (questionEmbedding == null || questionEmbedding.Length == 0)
                 {
@@ -68,11 +78,9 @@ namespace RAG_Code_Base.Services.Explanation
                 }
 
                 _logger?.LogInformation("Поиск релевантных блоков в векторной базе...");
-                var similarBlocks = await _vectorStorageService.SearchSimilarBlocksAsync(
-                    questionEmbedding
-                );
-
-                
+                var similarBlocks = (await _vectorStorageService.SearchSimilarBlocksAsync(questionEmbedding))
+                    .Take(3)
+                    .ToList();
 
                 _logger?.LogInformation("Найдено {Count} релевантных блоков", similarBlocks.Count);
 
@@ -85,11 +93,19 @@ namespace RAG_Code_Base.Services.Explanation
                         location += $" | Метод: {block.MethodName}";
                     location += $" | Строки: {block.StartLine}-{block.EndLine}]";
 
-                    return $"{location}\n\n{block.Content}";
+                    var content = block.Content.Length > 300
+                        ? block.Content[..300] + "..."
+                        : block.Content;
+
+                    return $"{location}\n\n{content}";
                 }).ToList();
 
                 _logger?.LogInformation("Генерация ответа с помощью LLM...");
-                var answer = await ExplainInternalAsync(question, contexts, cancellationToken);
+
+                var sb = new StringBuilder();
+                await foreach (var token in ExplainInternalAsync(question, contexts, cancellationToken))
+                    sb.Append(token);
+                var answer = sb.ToString().Trim();
 
                 _logger?.LogInformation("Ответ успешно сгенерирован");
 
@@ -122,50 +138,77 @@ namespace RAG_Code_Base.Services.Explanation
             }
         }
 
-        private async Task<string> ExplainInternalAsync(
+        public async IAsyncEnumerable<string> ExplainStreamAsync(
+            string question,
+            int topK = 5,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var questionEmbedding = await _vectorizationService.GenerateEmbeddingAsync(question, cancellationToken);
+
+            var similarBlocks = (await _vectorStorageService.SearchSimilarBlocksAsync(questionEmbedding))
+                .Take(topK)
+                .ToList();
+
+            var contexts = similarBlocks.Select(block =>
+            {
+                var location = $"[Файл: {block.FileName} | Строки: {block.StartLine}-{block.EndLine}]";
+                var content = block.Content.Length > 300 ? block.Content[..300] + "..." : block.Content;
+                return $"{location}\n\n{content}";
+            }).ToList();
+
+            await foreach (var token in ExplainInternalAsync(question, contexts, cancellationToken))
+            {
+                yield return token;
+            }
+        }
+
+        private async IAsyncEnumerable<string> ExplainInternalAsync(
             string question,
             List<string> contexts,
-            CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            try
+            string contextBlock = contexts != null && contexts.Any()
+                ? string.Join("\n\n---\n\n", contexts.Where(c => !string.IsNullOrWhiteSpace(c)))
+                : "Контекст отсутствует.";
+
+            string prompt = $"""
+                             Ты — инженер-программист. Объясни код и технический текст простыми словами.
+
+                                ИНСТРУКЦИИ ПО ФОРМАТИРОВАНИЮ:
+                                - Используй **markdown** для форматирования
+                                - Код выделяй в блоки: ```csharp ... ```
+                                - Важные термины выделяй **жирным**
+                                - Списки оформляй через "- " или "1. "
+                                - Разбивай ответ на абзацы для читаемости
+
+                             Если данных недостаточно — честно скажи об этом.
+
+                             Контекст из кодовой базы:
+                             {contextBlock}
+                             
+                             Вопрос пользователя:
+                             {question}
+                             
+                             Ответ:
+                             """;
+
+            var inferenceParams = new InferenceParams
             {
-                string contextBlock = contexts != null && contexts.Any()
-                    ? string.Join("\n\n---\n\n", contexts.Where(c => !string.IsNullOrWhiteSpace(c)))
-                    : "Контекст отсутствует.";
+                MaxTokens = 512,
+                AntiPrompts = new List<string> { "Вопрос пользователя:", "Контекст из кодовой базы:" }
+            };
 
-                string prompt = $@"
-                            Ты — инженер-программист. Объясни код и технический текст простыми словами.
-                            Если данных недостаточно — честно скажи, что данных не хватает.
+            var executor = new StatelessExecutor(_weights, _modelParams);
 
-                            Контекст из кодовой базы:
-                            {contextBlock}
-
-                            Вопрос пользователя:
-                            {question}
-
-                            Ответ:
-                            ";
-
-                var response = await _conversation.SubmitAsync(prompt, cancellationToken);
-
-                if (response == null || string.IsNullOrWhiteSpace(response.Completion))
-                {
-                    _logger?.LogWarning("Модель вернула пустой ответ или null.");
-                    return "Модель не смогла сгенерировать ответ.";
-                }
-
-                return response.Completion.Trim();
-            }
-            catch (OperationCanceledException)
+            await foreach (var token in executor.InferAsync(prompt, inferenceParams, cancellationToken))
             {
-                _logger?.LogWarning("Генерация ответа была отменена пользователем.");
-                return "Генерация отменена.";
+                yield return token;
             }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Ошибка при генерации объяснения.");
-                return "Произошла ошибка при объяснении.";
-            }
+        }
+
+        public void Dispose()
+        {
+            _weights.Dispose();
         }
     }
 
@@ -174,6 +217,7 @@ namespace RAG_Code_Base.Services.Explanation
         public string Question { get; set; }
         public string Answer { get; set; }
         public List<SimilarBlock> FoundBlocks { get; set; }
+
         public string GetSourcesSummary()
         {
             if (FoundBlocks == null || FoundBlocks.Count == 0)

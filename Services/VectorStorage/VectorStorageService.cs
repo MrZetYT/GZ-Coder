@@ -26,15 +26,15 @@ namespace RAG_Code_Base.Services.VectorStorage
             // Создаём клиент для работы с Qdrant
             _qdrantClient = new QdrantClient(qdrantHost, qdrantPort);
 
-            _logger.LogInformation("🔌 Подключение к Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
+            _logger.LogInformation(" Подключение к Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
 
             // Инициализируем коллекцию при запуске
             InitializeCollectionAsync().GetAwaiter().GetResult();
         }
 
-        /// <summary>
-        /// Создаёт коллекцию в Qdrant, если её ещё нет
-        /// </summary>
+
+        // Создаёт коллекцию в Qdrant, если её ещё нет
+   
         private async Task InitializeCollectionAsync()
         {
             try
@@ -45,12 +45,12 @@ namespace RAG_Code_Base.Services.VectorStorage
                 try
                 {
                     await _qdrantClient.GetCollectionInfoAsync(CollectionName);
-                    _logger.LogInformation("✅ Коллекция {CollectionName} уже существует", CollectionName);
+                    _logger.LogInformation(" Коллекция {CollectionName} уже существует", CollectionName);
                 }
                 catch (Grpc.Core.RpcException rpcEx) when (rpcEx.StatusCode == Grpc.Core.StatusCode.NotFound)
                 {
                     // Коллекции нет - создаём её
-                    _logger.LogInformation("📦 Создание коллекции {CollectionName}...", CollectionName);
+                    _logger.LogInformation(" Создание коллекции {CollectionName}...", CollectionName);
 
                     await _qdrantClient.CreateCollectionAsync(
                         collectionName: CollectionName,
@@ -61,25 +61,24 @@ namespace RAG_Code_Base.Services.VectorStorage
                         }
                     );
 
-                    _logger.LogInformation("✅ Коллекция {CollectionName} создана", CollectionName);
+                    _logger.LogInformation("Коллекция {CollectionName} создана", CollectionName);
                 }
             }
             catch (Grpc.Core.RpcException rpcEx) when (rpcEx.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
             {
                 // Коллекция уже существует (race condition) - это нормально
-                _logger.LogInformation("✅ Коллекция {CollectionName} уже существует", CollectionName);
+                _logger.LogInformation("Коллекция {CollectionName} уже существует", CollectionName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при инициализации коллекции Qdrant");
+                _logger.LogError(ex, " Ошибка при инициализации коллекции Qdrant");
                 throw;
             }
         }
 
-        /// <summary>
-        /// Сохраняет эмбеддинг для блока информации в Qdrant
-        /// Вызывается из FileLoaderService.VectorizeBlockInBackgroundAsync
-        /// </summary>
+        // Сохраняет эмбеддинг для блока информации в Qdrant
+        // Вызывается из FileLoaderService.VectorizeBlockInBackgroundAsync
+    
         public async Task SaveEmbeddingAsync(Guid blockId, float[] embedding, ApplicationDbContext dbContext)
         {
             try
@@ -142,18 +141,17 @@ namespace RAG_Code_Base.Services.VectorStorage
                     points: new[] { pointStruct }
                 );
 
-                _logger.LogInformation("✅ Эмбеддинг успешно сохранён в Qdrant для блока {BlockId}", blockId);
+                _logger.LogInformation("Эмбеддинг успешно сохранён в Qdrant для блока {BlockId}", blockId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при сохранении эмбеддинга для блока {BlockId}", blockId);
+                _logger.LogError(ex, " Ошибка при сохранении эмбеддинга для блока {BlockId}", blockId);
                 throw;
             }
         }
 
-        /// <summary>
-        /// Ищет наиболее похожие блоки по векторному представлению запроса
-        /// </summary>
+        // Ищет наиболее похожие блоки по векторному представлению запроса
+    
         public async Task<List<SimilarBlock>> SearchSimilarBlocksAsync(
             float[] queryEmbedding)
         {
@@ -162,7 +160,7 @@ namespace RAG_Code_Base.Services.VectorStorage
 
                 if (queryEmbedding == null || queryEmbedding.Length == 0)
                 {
-                    _logger.LogWarning("⚠️ Пустой вектор запроса");
+                    _logger.LogWarning("Пустой вектор запроса");
                     return new List<SimilarBlock>();
                 }
 
@@ -198,19 +196,19 @@ namespace RAG_Code_Base.Services.VectorStorage
                     });
                 }
 
-                _logger.LogInformation("✅ Найдено {Count} похожих блоков", similarBlocks.Count);
+                _logger.LogInformation(" Найдено {Count} похожих блоков", similarBlocks.Count);
                 return similarBlocks;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при поиске похожих блоков");
+                _logger.LogError(ex, " Ошибка при поиске похожих блоков");
                 throw;
             }
         }
 
-        /// <summary>
-        /// Получает статистику по векторной базе
-        /// </summary>
+        
+        // Получает статистику по векторной базе
+        
         public async Task<VectorStorageStats> GetStatsAsync(ApplicationDbContext dbContext)
         {
             try
@@ -235,14 +233,14 @@ namespace RAG_Code_Base.Services.VectorStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при получении статистики");
+                _logger.LogError(ex, " Ошибка при получении статистики");
                 return new VectorStorageStats();
             }
         }
 
-        /// <summary>
-        /// Удаляет эмбеддинг для блока из Qdrant
-        /// </summary>
+     
+        // Удаляет эмбеддинг для блока из Qdrant
+  
         public async Task DeleteEmbeddingAsync(Guid blockId)
         {
             try
@@ -261,14 +259,14 @@ namespace RAG_Code_Base.Services.VectorStorage
             }
         }
 
-        /// <summary>
-        /// Удаляет все векторы, связанные с файлом
-        /// </summary>
+
+        // Удаляет все векторы, связанные с файлом
+    
         public async Task DeleteFileEmbeddingsAsync(Guid fileItemId)
         {
             try
             {
-                _logger.LogInformation("🗑️ Удаление всех векторов для файла {FileId}", fileItemId);
+                _logger.LogInformation("Удаление всех векторов для файла {FileId}", fileItemId);
 
                 // Удаляем по фильтру
                 await _qdrantClient.DeleteAsync(
@@ -289,11 +287,11 @@ namespace RAG_Code_Base.Services.VectorStorage
                     }
                 );
 
-                _logger.LogInformation("✅ Все векторы файла {FileId} удалены", fileItemId);
+                _logger.LogInformation(" Все векторы файла {FileId} удалены", fileItemId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Ошибка при удалении векторов файла {FileId}", fileItemId);
+                _logger.LogError(ex, " Ошибка при удалении векторов файла {FileId}", fileItemId);
                 throw;
             }
         }

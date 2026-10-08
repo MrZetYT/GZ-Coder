@@ -1,12 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RAG_Code_Base.Services.Explanation;
-using System.Threading;
-using System.Threading.Tasks;
+using RAG_Code_Base.Models;
 
 namespace RAG_Code_Base.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api")]
     public class ExplanationController : ControllerBase
     {
         private readonly ExplanationService _explanationService;
@@ -20,13 +19,13 @@ namespace RAG_Code_Base.Controllers
             _logger = logger;
         }
 
-        [HttpPost("ask")]
+        [HttpPost("query")]
         public async Task<IActionResult> Ask(
             [FromBody] ExplanationRequest request,
             CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(request.Question))
-                return BadRequest(new { error = "Вопрос не может быть пустым." });
+                return BadRequest(new ApiError("null_question","Вопрос не может быть пустым"));
 
             _logger.LogInformation("📩 Получен вопрос: '{Question}'", request.Question);
 
@@ -39,25 +38,34 @@ namespace RAG_Code_Base.Controllers
 
             return Ok(response);
         }
-
-        [HttpGet("ask")]
-        public async Task<IActionResult> AskSimple(
-            [FromQuery] string q,
-            [FromQuery] int topK = 5,
-            [FromQuery] double minSimilarity = 0.5,
-            CancellationToken cancellationToken = default)
+        
+        [HttpPost("query/stream")]
+        public async Task StreamAnswer(
+            [FromBody] ExplanationRequest request,
+            CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(q))
-                return BadRequest(new { error = "Параметр 'q' обязателен" });
+            if (string.IsNullOrWhiteSpace(request.Question))
+            {
+                Response.StatusCode = 400;
+                await Response.WriteAsync("data: {\"error\": \"Вопрос не может быть пустым\"}\n\n", cancellationToken);
+                return;
+            }
+            
+            Response.Headers["Content-Type"] = "text/event-stream";
+            Response.Headers["Cache-Control"] = "no-cache";
+            Response.Headers["X-Accel-Buffering"] = "no";
 
-            var response = await _explanationService.ExplainWithSearchAsync(
-                q,
-                topK,
-                minSimilarity,
-                cancellationToken
-            );
+            await foreach (var token in _explanationService.ExplainStreamAsync(
+                               request.Question,
+                               request.TopK ?? 5,
+                               cancellationToken))
+            {
+                await Response.WriteAsync($"data: {token}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
 
-            return Ok(response);
+            await Response.WriteAsync("data: [DONE]\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
         }
     }
 

@@ -58,7 +58,8 @@
                                             <div class="source-item">
                                                 <div class="source-header">
                                                     <span class="source-file">📄 @source.FileName</span>
-                                                    <span class="source-similarity">@source.Similarity.ToString("P1")</span>
+                                                    <span
+                                                        class="source-similarity">@source.Similarity.ToString("P1")</span>
                                                 </div>
                                                 <div class="source-location">
                                                     @if (!string.IsNullOrEmpty(source.ClassName))
@@ -154,11 +155,11 @@
         border-bottom: 1px solid rgba(138, 43, 226, 0.3);
     }
 
-        .chat-header h2 {
-            margin: 0 0 5px 0;
-            color: #fff;
-            font-size: 32px;
-        }
+    .chat-header h2 {
+        margin: 0 0 5px 0;
+        color: #fff;
+        font-size: 32px;
+    }
 
     .subtitle {
         margin: 0;
@@ -220,22 +221,22 @@
         text-align: left;
     }
 
-        .examples li {
-            background: rgba(138, 43, 226, 0.1);
-            border: 1px solid rgba(138, 43, 226, 0.3);
-            padding: 15px 25px;
-            margin: 15px 0;
-            border-radius: 12px;
-            border-left: 4px solid #8a2be2;
-            transition: transform 0.2s, border-color 0.2s;
-            color: rgba(255, 255, 255, 0.9);
-        }
+    .examples li {
+        background: rgba(138, 43, 226, 0.1);
+        border: 1px solid rgba(138, 43, 226, 0.3);
+        padding: 15px 25px;
+        margin: 15px 0;
+        border-radius: 12px;
+        border-left: 4px solid #8a2be2;
+        transition: transform 0.2s, border-color 0.2s;
+        color: rgba(255, 255, 255, 0.9);
+    }
 
-            .examples li:hover {
-                transform: translateX(10px);
-                border-color: #8a2be2;
-                background: rgba(138, 43, 226, 0.15);
-            }
+    .examples li:hover {
+        transform: translateX(10px);
+        border-color: #8a2be2;
+        background: rgba(138, 43, 226, 0.15);
+    }
 
     .message {
         display: flex;
@@ -337,9 +338,9 @@
         transition: background 0.2s;
     }
 
-        .sources-header:hover {
-            background: rgba(138, 43, 226, 0.15);
-        }
+    .sources-header:hover {
+        background: rgba(138, 43, 226, 0.15);
+    }
 
     .toggle-icon {
         font-size: 12px;
@@ -394,21 +395,21 @@
         padding: 18px 24px;
     }
 
-        .typing-indicator span {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: rgba(138, 43, 226, 0.5);
-            animation: typing 1.4s infinite;
-        }
+    .typing-indicator span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(138, 43, 226, 0.5);
+        animation: typing 1.4s infinite;
+    }
 
-            .typing-indicator span:nth-child(2) {
-                animation-delay: 0.2s;
-            }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
 
-            .typing-indicator span:nth-child(3) {
-                animation-delay: 0.4s;
-            }
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
 
     @@keyframes typing {
         0%, 60%, 100% {
@@ -459,21 +460,21 @@
         color: white;
     }
 
-        .chat-input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-        }
+    .chat-input::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
 
-        .chat-input:focus {
-            outline: none;
-            border-color: #8a2be2;
-            background: rgba(0, 0, 0, 0.5);
-        }
+    .chat-input:focus {
+        outline: none;
+        border-color: #8a2be2;
+        background: rgba(0, 0, 0, 0.5);
+    }
 
-        .chat-input:disabled {
-            background: rgba(0, 0, 0, 0.6);
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
+    .chat-input:disabled {
+        background: rgba(0, 0, 0, 0.6);
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
 
     .send-button {
         width: 55px;
@@ -491,15 +492,15 @@
         flex-shrink: 0;
     }
 
-        .send-button:hover:not(:disabled) {
-            transform: scale(1.1);
-            box-shadow: 0 8px 20px rgba(138, 43, 226, 0.5);
-        }
+    .send-button:hover:not(:disabled) {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(138, 43, 226, 0.5);
+    }
 
-        .send-button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
+    .send-button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
 
     .spinner {
         width: 22px;
@@ -536,9 +537,9 @@
         border-radius: 5px;
     }
 
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: rgba(138, 43, 226, 0.7);
-        }
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(138, 43, 226, 0.7);
+    }
 </style>
 
 @code {
@@ -617,22 +618,96 @@
         if (string.IsNullOrWhiteSpace(text))
             return string.Empty;
 
+// 1. Сначала вытаскиваем блоки кода ДО HtmlEncode, чтобы не испортить содержимое
+        var codeBlocks = new Dictionary<string, string>();
+        var codeIndex = 0;
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"```(\w*)\n?([\s\S]*?)```",
+            match =>
+            {
+                var lang = match.Groups[1].Value;
+                var code = System.Web.HttpUtility.HtmlEncode(match.Groups[2].Value.Trim());
+                var placeholder = $"__CODEBLOCK_{codeIndex}__";
+                var langLabel = string.IsNullOrEmpty(lang) ? "" : $"<div style='font-size:11px;color:rgba(192,132,252,0.7);padding:6px 14px 0;'>{lang}</div>";
+                codeBlocks[placeholder] = $@"
+                <div style='background:rgba(0,0,0,0.5);border:1px solid rgba(138,43,226,0.4);
+                            border-radius:10px;margin:10px 0;overflow:auto;'>
+                    {langLabel}
+                    <pre style='margin:0;padding:12px 14px;font-family:monospace;
+                                font-size:13px;color:#e2e8f0;white-space:pre-wrap;'>{code}</pre>
+                </div>";
+                codeIndex++;
+                return placeholder;
+            });
+
+// 2. Теперь безопасно кодируем HTML
         text = System.Web.HttpUtility.HtmlEncode(text);
 
+// 3. Инлайн-код
         text = System.Text.RegularExpressions.Regex.Replace(
             text,
             @"`([^`]+)`",
-            "<code style='background: rgba(138, 43, 226, 0.2); padding: 3px 8px; border-radius: 5px; font-family: monospace; color: #c084fc;'>$1</code>"
+            "<code style='background:rgba(138,43,226,0.2);padding:2px 7px;border-radius:5px;" +
+            "font-family:monospace;color:#c084fc;'>$1</code>"
         );
 
+// 4. Жирный
         text = System.Text.RegularExpressions.Regex.Replace(
             text,
             @"\*\*([^*]+)\*\*",
-            "<strong style='color: #c084fc;'>$1</strong>"
+            "<strong style='color:#c084fc;'>$1</strong>"
         );
 
+// 5. Заголовки ## и ###
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text, @"^### (.+)$",
+            "<h4 style='color:#c084fc;margin:14px 0 6px;font-size:15px;'>$1</h4>",
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text, @"^## (.+)$",
+            "<h3 style='color:#c084fc;margin:16px 0 8px;font-size:17px;'>$1</h3>",
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+
+// 6. Нумерованные списки
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"((?:^\d+\. .+\n?)+)",
+            match =>
+            {
+                var items = System.Text.RegularExpressions.Regex.Replace(
+                    match.Value.Trim(),
+                    @"^\d+\. (.+)$",
+                    "<li style='margin:5px 0;'>$1</li>",
+                    System.Text.RegularExpressions.RegexOptions.Multiline);
+                return $"<ol style='margin:10px 0;padding-left:22px;'>{items}</ol>";
+            },
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+
+// 7. Маркированные списки (- или *)
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"((?:^[-*] .+\n?)+)",
+            match =>
+            {
+                var items = System.Text.RegularExpressions.Regex.Replace(
+                    match.Value.Trim(),
+                    @"^[-*] (.+)$",
+                    "<li style='margin:5px 0;'>$1</li>",
+                    System.Text.RegularExpressions.RegexOptions.Multiline);
+                return $"<ul style='margin:10px 0;padding-left:22px;'>{items}</ul>";
+            },
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+
+// 8. Переносы строк
         text = text.Replace("\n", "<br/>");
+
+// 9. Возвращаем блоки кода на место
+        foreach (var (placeholder, html) in codeBlocks)
+            text = text.Replace(placeholder, html);
 
         return text;
     }
+
 }

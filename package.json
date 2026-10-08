@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "cytoscape": "^3.33.2",
+    "date-fns": "^4.1.0",
+    "react-cytoscapejs": "^2.0.0"
+  }
+}

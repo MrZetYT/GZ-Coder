@@ -1,0 +1,42 @@
+﻿http:
+  routers:
+    frontend:
+      rule: "Host(`localhost`) && PathPrefix(`/`)"
+      entryPoints:
+        - web
+      service: api-service
+      priority: 1
+
+    api:
+      rule: "Host(`localhost`) && PathPrefix(`/api`)"
+      entryPoints:
+        - web
+      service: api-service
+      priority: 10
+
+    health:
+      rule: "Host(`localhost`) && PathPrefix(`/health`)"
+      entryPoints:
+        - web
+      service: api-service
+      priority: 10
+
+    hangfire:
+      rule: "Host(`localhost`) && PathPrefix(`/hangfire`)"
+      entryPoints:
+        - web
+      service: api-service
+      priority: 10
+
+    swagger:
+      rule: "Host(`localhost`) && PathPrefix(`/swagger`)"
+      entryPoints:
+        - web
+      service: api-service
+      priority: 10
+
+  services:
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://api:8080"

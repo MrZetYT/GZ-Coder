@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RAG_Code_Base.Services.DataLoader;
+using RAG_Code_Base.Models;
 
 namespace RAG_Code_Base.Controllers
 {
@@ -20,13 +21,14 @@ namespace RAG_Code_Base.Controllers
         public IActionResult UploadFiles(List<IFormFile> files)
         {
             if (files == null || files.Count == 0)
-                return BadRequest("Файлы не выбраны.");
+                return BadRequest(new ApiError("null_files","Файлы не выбраны"));
 
             foreach (var file in files)
             {
                 var validationResult = _fileValidator.Validate(file);
                 if (!validationResult.IsValid)
-                    return BadRequest($"Файл {file.FileName} — ошибка: {validationResult.ErrorMessage}");
+                    return BadRequest(
+                        new ApiError("validation_error",$"Файл {file.FileName} — ошибка: {validationResult.ErrorMessage}"));
             }
 
             var savedFiles = _fileLoaderService.SaveFiles(files);
@@ -45,7 +47,7 @@ namespace RAG_Code_Base.Controllers
         public async Task<IActionResult> DeleteFileAsync(Guid id)
         {
             var deletedFile = await _fileLoaderService.DeleteFileAsync(id);
-            if (!deletedFile) return NotFound("Файл не найден.");
+            if (!deletedFile) return NotFound(new ApiError("file_not_found","Файл не найден."));
             return NoContent();
         }
 
@@ -53,7 +55,7 @@ namespace RAG_Code_Base.Controllers
         public async Task<IActionResult> DeleteAllFilesAsync()
         {
             var isDeleted = await _fileLoaderService.DeleteAllFilesAsync();
-            if (!isDeleted) return NotFound("Файлов нет");
+            if (!isDeleted) return NotFound(new ApiError("files_not_found","Файлов нет"));
             return NoContent();
         }
     }

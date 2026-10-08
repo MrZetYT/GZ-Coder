@@ -8,7 +8,7 @@ namespace RAG_Code_Base.Services.DataLoader
 
         public FileTypeResolver()
         {
-            var configPath = Path.Combine(Directory.GetCurrentDirectory(), "Configs", "fileTypes.json");
+            var configPath = Path.Combine(Directory.GetCurrentDirectory(), "Configs", "filetypes.json");
             if (File.Exists(configPath))
             {
                 var json = File.ReadAllText(configPath);
